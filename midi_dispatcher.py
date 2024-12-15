@@ -7,33 +7,33 @@ from midi_port import MidiPort
 
 class MidiDispatcher(Thread):
 
-    PORT_IN = 0
-    PORT_OUT = 1
-
     def __init__(self, window):
         self._window = window
-        self._midi_in = rtmidi.MidiIn()
-        self._midi_out = rtmidi.MidiOut()
-        self._ports_in = []
-        self._ports_out = []
+        self._midi = []
+        self._midi.append(rtmidi.MidiOut())
+        self._midi.append(rtmidi.MidiIn())
+        self._ports = [0, 1]
+        self._ports[0] = []
+        self._ports[1] = []
         self._scan_delay = 1
         self._current_type = 0
-        self._input_inx = 0
-        self._output_inx = 0
-        self._col1 = curses.color_pair(1)
-        self._col2 = curses.color_pair(2)
-        self._col3 = curses.color_pair(3)
+        self._index = [0, 0]
+        self._color1 = curses.color_pair(1)
+        self._color2 = curses.color_pair(2)
+        self._color3 = curses.color_pair(3)
         self._running = True
         Thread.__init__(self)
 
     def _scan_ports(self):
-        self._scan_midi(self._midi_in, self._ports_in)
-        self._scan_midi(self._midi_out, self._ports_out)
+        for index in range(2):
+            self._scan_midi(index)
 
-    def _scan_midi(self, midi, ports):
+    def _scan_midi(self, index):
         # Check if midi device is already in devices list
         # If not, we add it to the list
         # Otherwise we just set the connected flag back
+        midi = self._midi[index]
+        ports = self._ports[index]
         for i in range(midi.get_port_count()):
             found = False
             for j, port in enumerate(ports):
@@ -43,27 +43,24 @@ class MidiDispatcher(Thread):
             if not found:
                 ports.append(MidiPort(i, midi.get_port_name(i)))
 
-    def _display_check(self, y, x, state):
-        if state:
-            self._window.addstr(y, x, "[x]", self._col3)
-        else:
-            self._window.addstr(y, x, "[ ]", self._col3)
+    def _display_check(self, y, x, selected):
+        checked = "[x]" if selected else "[ ]"
+        self._window.addstr(y, x, checked, self._color3)
 
-    def _display_ports(self, ports, x):
-        i = 0
-        for port in ports:
-            self._display_check(i + 1, x, port.has_connections())
-            if i == self._output_inx:
-                self._window.addstr(i + 1,
-                                    x + 4,
-                                    port.get_short_name(),
-                                    self._col2)
-            else:
-                self._window.addstr(i + 1,
-                                    x + 4,
-                                    port.get_short_name(),
-                                    self._col1)
-            i += 1
+    def _display_port(self, index, i):
+        self._display_check(i + 1, 39 * index, False)
+        color = self._color1
+        if self._current_type == index and i == self._index[index]:
+            color = self._color2
+        self._window.addstr(i + 1,
+                            39 * index + 4,
+                            self._ports[index][i].get_short_name(),
+                            color)
+
+    def _display_ports(self, index):
+        ports = self._ports[index]
+        for i in range(len(ports)):
+            self._display_port(index, i)
 
     def run(self):
         while self._running:
@@ -74,8 +71,19 @@ class MidiDispatcher(Thread):
         self._running = False
 
     def display(self):
-        self._display_ports(self._ports_in, 1)
-        self._display_ports(self._ports_out, 40)
+        for index in range(2):
+            self._display_ports(index)
 
     def action(self, key):
-        pass
+        if key == curses.KEY_RIGHT:
+            if self._current_type == 0:
+                self._current_type = 1
+        elif key == curses.KEY_LEFT:
+            if self._current_type == 1:
+                self._current_type = 0
+        elif key == curses.KEY_UP:
+            if self._index[self._current_type] > 0:
+                self._index[self._current_type] -= 1
+        elif key == curses.KEY_DOWN:
+            if self._index[self._current_type] < len(self._ports[self._current_type]) - 1:
+                self._index[self._current_type] += 1
