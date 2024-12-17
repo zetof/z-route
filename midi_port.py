@@ -15,8 +15,16 @@ class MidiPort:
     def get_short_name(self):
         return self._short_name
 
-    def has_connections(self):
-        if len(self._connections) > 0:
+    def has_connection(self, index):
+        if index in self._connections:
             return True
         else:
             return False
+
+    def add_connection(self, index):
+        if index not in self._connections:
+            self._connections.append(index)
+
+    def del_connection(self, index):
+        if index in self._connections:
+            self._connections.remove(index)

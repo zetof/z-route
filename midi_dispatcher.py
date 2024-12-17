@@ -56,12 +56,16 @@ class MidiDispatcher(Thread):
         self._window.addstr(y, x, checked, self._color3)
 
     def _display_port(self, index, i):
-        self._display_check(i + 1, 39 * index, False)
+        if index == 1:
+            self._display_check(i + 1, 35 * index, False)
+            indent = 4
+        else:
+            indent = 1
         color = self._color1
         if self._current_type == index and i == self._index[index]:
             color = self._color2
         self._window.addstr(i + 1,
-                            39 * index + 4,
+                            35 * index + indent,
                             self._ports[index][i].get_short_name(),
                             color)
 
@@ -84,6 +88,11 @@ class MidiDispatcher(Thread):
 
     def action(self, key):
         refresh = False
+        if key == 32 and self._current_type == 1:
+            if self._ports[0][self._index[0]].has_connection(self._index[1]):
+                self._ports[0][self._index[0]].del_connection(self._index[1])
+            else:
+                self._ports[0][self._index[0]].add_connection(self._index[1])
         if key == curses.KEY_RIGHT:
             if self._current_type == 0:
                 self._current_type = 1
@@ -98,7 +107,7 @@ class MidiDispatcher(Thread):
                 refresh = True
         elif key == curses.KEY_DOWN:
             if (self._index[self._current_type] <
-                len(self._ports[self._current_type]) - 1):
+                    len(self._ports[self._current_type]) - 1):
                 self._index[self._current_type] += 1
                 refresh = True
         if refresh:
