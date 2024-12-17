@@ -24,7 +24,6 @@ def main(window):
     midi_dispatcher.start()
 
     while True:
-        midi_dispatcher.display()
         key = window.getch()
         if key != -1:
             if key == 113:
